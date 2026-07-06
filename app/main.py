@@ -1,23 +1,28 @@
 from fastapi import FastAPI
 
-from app.api.routes import router
+from app.api.routes import create_router
+
+from app.clients.llama_client import LlamaClient
+
+from app.services.inference_service import InferenceService
+from app.services.health_service import HealthService
+
 from app.config.settings import settings
 
 app = FastAPI(
     title=settings["app"]["name"],
     version=settings["app"]["version"],
-    debug=settings["app"]["debug"],
 )
 
+llama_client = LlamaClient()
 
-@app.on_event("startup")
-async def startup():
-    pass
+inference_service = InferenceService(llama_client)
 
+health_service = HealthService(llama_client)
 
-@app.on_event("shutdown")
-async def shutdown():
-    pass
-
-
-app.include_router(router)
+app.include_router(
+    create_router(
+        inference_service,
+        health_service,
+    )
+)

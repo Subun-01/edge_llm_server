@@ -1,39 +1,36 @@
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
-
-from app.schemas.generate import GenerateRequest, GenerateResponse
-from app.services.inference_service import InferenceService
 from app.config.settings import settings
+from app.schemas.inference_schema import GenerateRequest, GenerateResponse
 
-service = InferenceService()
+def create_router(
+    inference_service,
+    health_service,
+):
 
+    router = APIRouter()
 
-router = APIRouter()
+    @router.get("/")
+    async def root():
+        return {
+            "application": settings["app"]["name"],
+            "version": settings["app"]["version"],
+            "status": "running",
+        }
 
+    @router.get("/health")
+    async def health():
+        return health_service.get_health()
 
-@router.get("/")
-async def root():
-    return {
-        "application": settings["app"]["name"],
-        "version": settings["app"]["version"],
-        "status": "running",
-    }
-
-
-@router.get("/health")
-async def health():
-    return {
-        "status": "healthy",
-        "llama_server": "unknown",
-    }
-
-
-@router.post("/generate",response_model=GenerateResponse,)
-async def generate(request: GenerateRequest):
-
-    return service.generate(
-        request.prompt,
-        request.temperature,
-        request.max_tokens
+    @router.post(
+        "/generate",
+        response_model=GenerateResponse,
     )
+    async def generate(request: GenerateRequest):
 
+        return inference_service.generate(
+            request.prompt,
+            request.temperature,
+            request.max_tokens,
+        )
+
+    return router

@@ -1,21 +1,58 @@
+from app.core.logger import logger
+import logging
 import httpx
-
+logging.getLogger("httpx").setLevel(logging.WARNING)
 from app.config.settings import settings
+
 
 
 class LlamaClient:
     def __init__(self):
         host = settings["llama"]["host"]
         port = settings["llama"]["port"]
-        print("port:",port)
         self.base_url = f"http://{host}:{port}"
+        self.client = httpx.Client(
+            base_url=self.base_url,
+            timeout=settings["llama"].get("timeout", 60),
+        )
+
+        logger.info("LlamaClient initialized")
+    # --------------------------------------------------
+    # Private Helpers
+    # --------------------------------------------------
+
+    def _get(self, endpoint: str) -> dict:
+
+        response = self.client.get(endpoint)
+
+        response.raise_for_status()
+
+        return response.json()
+
+    def _post(self, endpoint: str, payload: dict) -> dict:
+
+        response = self.client.post(
+            endpoint,
+            json=payload,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    # --------------------------------------------------
+    # Public API
+    # --------------------------------------------------
 
     def generate(
         self,
         prompt: str,
         temperature: float,
         max_tokens: int,
+        request_id: str,
     ) -> dict:
+
+        logger.info("[%s] Sending request to llama-server", request_id)
 
         payload = {
             "model": settings["llama"]["model"],
@@ -29,12 +66,14 @@ class LlamaClient:
             "max_tokens": max_tokens,
         }
 
-        response = httpx.post(
-            f"{self.base_url}/v1/chat/completions",
-            json=payload,
-            timeout=60,
+        return self._post(
+            "/v1/chat/completions",
+            payload,
         )
 
-        response.raise_for_status()
+    def health(self) -> dict:
+        return self._get("/health")
 
-        return response.json()
+  
+    def close(self):
+        self.client.close()

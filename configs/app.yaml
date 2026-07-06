@@ -10,6 +10,7 @@ server:
 llama:
   host: "127.0.0.1"
   port: 8080
+  timeout: 60
   model: "/mnt/nvme/sn/llm/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 
 generation:
